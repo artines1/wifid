@@ -20,38 +20,40 @@
 #include "IpcHandler.h"
 
 namespace wifi {
+namespace ipc {
 
 class WifiIpcHandler :
   public IpcHandler
 {
 public:
-  static const int CONNECT_MODE = 1;
-  static const int LISTEN_MODE  = 2;
+  static const int32_t CONNECT_MODE = 1;
+  static const int32_t LISTEN_MODE  = 2;
 
   static const size_t NBOUNDS = 2; // respect leading and trailing '\0'
 
-  WifiIpcHandler(int aSockMode, const char* aSockName, bool aIsSeqPacket);
+  WifiIpcHandler(int32_t aSockMode, const char* aSockName, bool aIsSeqPacket);
   ~WifiIpcHandler();
 
-  int openIpc();
-  int readIpc(uint8_t* aData, size_t aDataLen);
-  int writeIpc(uint8_t* aData, size_t aDataLen);
-  int closeIpc();
-  int waitForData();
+  int32_t OpenIpc();
+  int32_t ReadIpc(uint8_t* aData, size_t aDataLen);
+  int32_t WriteIpc(uint8_t* aData, size_t aDataLen);
+  int32_t CloseIpc();
+  int32_t WaitForData();
 
-  bool isConnected();
+  bool IsConnected();
 
 private:
-  int openConnectSocket();
-  int openListenSocket();
-  void settingSocket();
+  int32_t OpenConnectSocket();
+  int32_t OpenListenSocket();
+  void SettingSocket();
 
-  int mRwFd;
-  int mConnFd;
-  int mSockMode;
+  int32_t mRwFd;
+  int32_t mConnFd;
+  int32_t mSockMode;
   const char* mSockName;
   bool mIsSeqPacket;
   bool mIsConnected;
 };
+} //namespace ipc
 } //namespace wifi
 #endif // mozilla_WifiIpcHandler_h

@@ -18,17 +18,18 @@
 #include <stdlib.h>
 
 #include "Daemon.h"
+#include "IpcHandler.h"
+#include "IpcManager.h"
 #include "MessageConsumer.h"
 #include "MessageProducer.h"
 #include "MessageQueueWorker.h"
+#include "WifiDebug.h"
 #include "WifiIpcHandler.h"
-#include "WifiIpcManager.h"
+
+using namespace wifi::ipc;
 
 namespace wifi {
 namespace {
-
-// The global Daemon instance.
-Daemon* sDaemon = NULL;
 
 class DaemonImpl : public Daemon {
  public:
@@ -43,14 +44,21 @@ class DaemonImpl : public Daemon {
   }
 
   void Start() {
-    mIpcManager->Loop();
+    IpcManager::GetInstance().Loop();
   }
 
  private:
   void CleanUp() {
-    delete mIpcHandler;
-    mMsgQueueWorker->ShutDown();
-    delete mMsgQueueWorker;
+    if(mInitialized) {
+      mMsgQueueWorker->ShutDown();
+      IpcManager::GetInstance().ShutDown();
+
+      delete mIpcHandler;
+      delete mMsgQueueWorker;
+
+      mInitialized = false;
+      WIFID_DEBUG("Daemon CleanUp");
+    }
   }
 
   bool Init(const CommandLineOptions *aOp) {
@@ -64,48 +72,38 @@ class DaemonImpl : public Daemon {
                                          aOp->socketName,
                                          aOp->useSeqPacket);
 
-    mMsgQueueWorker = new MessageQueueWorker(static_cast<MessageConsumer*>(&WifiIpcManager::GetInstance()));
+    mMsgQueueWorker = new MessageQueueWorker(&IpcManager::GetInstance());
     mMsgQueueWorker->Initialize();
 
-    WifiIpcManager::GetInstance().Initialize(mIpcHandler,static_cast<MessageProducer*>(mMsgQueueWorker));
+    IpcManager::GetInstance().Initialize(mIpcHandler, mMsgQueueWorker);
 
+    mInitialized = true;
+
+    WIFID_DEBUG("Daemon Initialized");
     return true;
   }
 
   bool mInitialized;
   //TODO using unique_ptr and enable C++11
-  WifiIpcHandler*  mIpcHandler;
-  WifiIpcManager* mIpcManager;
+  IpcHandler*  mIpcHandler;
   MessageQueueWorker* mMsgQueueWorker;
-  
 };
 }  // namespace
 
 bool Daemon::Initialize(const CommandLineOptions *aOp) {
-  if (!sDaemon) {
-    return false;
-  }
-
-  sDaemon = new DaemonImpl();
-  if (sDaemon->Init(aOp)) {
+  if (GetInstance().Init(aOp)) {
     return true;
   }
-
-  delete sDaemon;
-  sDaemon = NULL;
-
   return false;
 }
 
 void Daemon::ShutDown() {
-  if (sDaemon) {
-    delete sDaemon;
-    sDaemon = NULL;
-  }
+  GetInstance().CleanUp();
 }
 
-Daemon* Daemon::GetInstance() {
-  return sDaemon;
+Daemon& Daemon::GetInstance() {
+  static DaemonImpl instance;
+  return instance;
 }
 
 Daemon::~Daemon() {

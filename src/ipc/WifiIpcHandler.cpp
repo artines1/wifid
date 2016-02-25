@@ -27,8 +27,9 @@
 #include "WifiIpcHandler.h"
 
 namespace wifi {
+namespace ipc {
 
-WifiIpcHandler::WifiIpcHandler(int aSockMode, const char* aSockName, bool aIsSeqPacket)
+WifiIpcHandler::WifiIpcHandler(int32_t aSockMode, const char* aSockName, bool aIsSeqPacket)
   : mRwFd(-1)
   , mConnFd(-1)
   , mSockMode(aSockMode)
@@ -40,13 +41,12 @@ WifiIpcHandler::WifiIpcHandler(int aSockMode, const char* aSockName, bool aIsSeq
 
 WifiIpcHandler::~WifiIpcHandler()
 {
-  closeIpc();
+  CloseIpc();
 }
 
-int
-WifiIpcHandler::openIpc()
+int32_t WifiIpcHandler::OpenIpc()
 {
-  int ret = -1;
+  int32_t ret = -1;
 
   if (mIsConnected) {
     return 0;
@@ -54,26 +54,28 @@ WifiIpcHandler::openIpc()
 
   switch (mSockMode) {
     case CONNECT_MODE:
-      ret = openConnectSocket();
+      ret = OpenConnectSocket();
       break;
 
     case LISTEN_MODE:
-      ret = openListenSocket();
+      ret = OpenListenSocket();
       break;
 
     default:
       WIFID_ERROR("Could not recognize the socket mode(%d).\n", mSockMode);
   }
 
-  settingSocket();
+  SettingSocket();
+
+  if (ret < 0) {
+    return ret;
+  }
 
   mIsConnected = true;
-
   return ret;
 }
 
-int
-WifiIpcHandler::readIpc(uint8_t* aData, size_t aDataLen)
+int32_t WifiIpcHandler::ReadIpc(uint8_t* aData, size_t aDataLen)
 {
   if (!mIsConnected) {
     return -1;
@@ -82,11 +84,10 @@ WifiIpcHandler::readIpc(uint8_t* aData, size_t aDataLen)
   return read(mRwFd, aData, aDataLen);
 }
 
-int
-WifiIpcHandler::writeIpc(uint8_t* aData, size_t aDataLen)
+int32_t WifiIpcHandler::WriteIpc(uint8_t* aData, size_t aDataLen)
 {
   size_t writeOffset = 0;
-  int size;
+  int32_t size;
 
   if (!mIsConnected) {
     return -1;
@@ -112,11 +113,10 @@ WifiIpcHandler::writeIpc(uint8_t* aData, size_t aDataLen)
   return 0;
 }
 
-int
-WifiIpcHandler::waitForData()
+int32_t WifiIpcHandler::WaitForData()
 {
   struct pollfd fds[1];
-  int ret;
+  int32_t ret;
 
   if (!mIsConnected) {
     return -1;
@@ -133,7 +133,7 @@ WifiIpcHandler::waitForData()
   return ret;
 }
 
-int WifiIpcHandler::closeIpc()
+int32_t WifiIpcHandler::CloseIpc()
 {
   if (mRwFd != -1) {
     close(mRwFd);
@@ -148,12 +148,11 @@ int WifiIpcHandler::closeIpc()
   return 0;
 }
 
-int
-WifiIpcHandler::openConnectSocket()
+int32_t WifiIpcHandler::OpenConnectSocket()
 {
   size_t len, siz;
   struct sockaddr_un addr;
-  int res;
+  int32_t res;
 
   len = strlen(mSockName);
   siz = len + NBOUNDS;
@@ -184,12 +183,11 @@ WifiIpcHandler::openConnectSocket()
   return 0;
 }
 
-int
-WifiIpcHandler::openListenSocket()
+int32_t WifiIpcHandler::OpenListenSocket()
 {
   struct sockaddr_un hostaddr, peeraddr;
   socklen_t socklen = sizeof(hostaddr);
-  int ret;
+  int32_t ret;
   size_t len, siz;
 
   len = strlen(mSockName);
@@ -236,18 +234,17 @@ WifiIpcHandler::openListenSocket()
   return 0;
 }
 
-bool
-WifiIpcHandler::isConnected()
+bool WifiIpcHandler::IsConnected()
 {
   return mIsConnected;
 }
 
-void
-WifiIpcHandler::settingSocket()
+void WifiIpcHandler::SettingSocket()
 {
-  int ret = fcntl(mConnFd, F_SETFL, O_NONBLOCK);
+  int32_t ret = fcntl(mConnFd, F_SETFL, O_NONBLOCK);
   if (ret < 0) {
     WIFID_ERROR("Error setting O_NONBLOCK errno: %s\n", strerror(errno));
   }
 }
+}//namespace ipc
 }//namespace wifi

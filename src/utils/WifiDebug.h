@@ -21,6 +21,8 @@
 
 #define FUNC __PRETTY_FUNCTION__
 
+#define WIFI_DEBUG_FLAG
+
 #define TAG_WIFID "wifid"
 
 #ifdef WIFI_DEBUG_FLAG
