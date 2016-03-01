@@ -18,11 +18,14 @@
 #include <stdlib.h>
 
 #include "Daemon.h"
+#include "IpcHandler.h"
+#include "IpcManager.h"
 #include "MessageConsumer.h"
 #include "MessageProducer.h"
 #include "MessageQueueWorker.h"
 #include "WifiIpcHandler.h"
-#include "WifiIpcManager.h"
+
+using namespace wifi::ipc;
 
 namespace wifi {
 namespace {
@@ -43,7 +46,7 @@ class DaemonImpl : public Daemon {
   }
 
   void Start() {
-    mIpcManager->Loop();
+    IpcManager::GetInstance().Loop();
   }
 
  private:
@@ -51,6 +54,8 @@ class DaemonImpl : public Daemon {
     delete mIpcHandler;
     mMsgQueueWorker->ShutDown();
     delete mMsgQueueWorker;
+
+    mInitialized = false;
   }
 
   bool Init(const CommandLineOptions *aOp) {
@@ -64,20 +69,20 @@ class DaemonImpl : public Daemon {
                                          aOp->socketName,
                                          aOp->useSeqPacket);
 
-    mMsgQueueWorker = new MessageQueueWorker(static_cast<MessageConsumer*>(&WifiIpcManager::GetInstance()));
+    mMsgQueueWorker = new MessageQueueWorker(&IpcManager::GetInstance());
     mMsgQueueWorker->Initialize();
 
-    WifiIpcManager::GetInstance().Initialize(mIpcHandler,static_cast<MessageProducer*>(mMsgQueueWorker));
+    IpcManager::GetInstance().Initialize(mIpcHandler,mMsgQueueWorker);
+
+    mInitialized = true;
 
     return true;
   }
 
   bool mInitialized;
   //TODO using unique_ptr and enable C++11
-  WifiIpcHandler*  mIpcHandler;
-  WifiIpcManager* mIpcManager;
+  IpcHandler*  mIpcHandler;
   MessageQueueWorker* mMsgQueueWorker;
-  
 };
 }  // namespace
 

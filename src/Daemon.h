@@ -33,7 +33,7 @@ class Daemon {
   virtual void Start() = 0;
 
  protected:
-  virtual ~Daemon() = 0;
+  virtual ~Daemon();
  private:
   // Internal instance helper called by Initialize().
   virtual bool Init(const CommandLineOptions *aOp) = 0;

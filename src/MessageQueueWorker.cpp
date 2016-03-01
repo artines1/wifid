@@ -20,7 +20,7 @@
 #include "MessageConsumer.h"
 #include "MessageQueueWorker.h"
 #include "WifiDebug.h"
-#include "WifiGonkMessage.h"
+#include "WifiMessage.h"
 
 namespace wifi {
 
@@ -64,8 +64,6 @@ void MessageQueueWorker::Initialize()
 
 void MessageQueueWorker::ShutDown()
 {
-  //TODO worker shutdowns immediately and no waiting join the thread.
-  //It should wait for consuming message completely
   mDone = false;
 }
 
