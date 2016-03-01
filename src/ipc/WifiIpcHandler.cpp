@@ -167,7 +167,7 @@ int32_t WifiIpcHandler::OpenConnectSocket()
   socklen_t addrLen = offsetof(struct sockaddr_un, sun_path) + siz;
 
   mRwFd = socket(AF_UNIX, mIsSeqPacket ? SOCK_SEQPACKET : SOCK_STREAM, 0);
-  if (mConnFd < 0) {
+  if (mRwFd < 0) {
     WIFID_ERROR("Could not create %s socket: %s\n", mSockName, strerror(errno));
     return -1;
   }
