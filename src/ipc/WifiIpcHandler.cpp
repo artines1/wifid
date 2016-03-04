@@ -77,11 +77,14 @@ int32_t WifiIpcHandler::OpenIpc()
 
 int32_t WifiIpcHandler::ReadIpc(uint8_t* aData, size_t aDataLen)
 {
+  int32_t ret = 0;
   if (!mIsConnected) {
     return -1;
   }
 
-  return read(mRwFd, aData, aDataLen);
+  ret = read(mRwFd, aData, aDataLen);
+  WIFID_DEBUG(" %d of bytes to be read... data=%p", ret, aData);
+  return ret;
 }
 
 int32_t WifiIpcHandler::WriteIpc(uint8_t* aData, size_t aDataLen)
@@ -110,6 +113,7 @@ int32_t WifiIpcHandler::WriteIpc(uint8_t* aData, size_t aDataLen)
     writeOffset += size;
   }
 
+  WIFID_DEBUG(" %d of bytes were written... data=%p", aDataLen, aData);
   return 0;
 }
 
@@ -241,7 +245,7 @@ bool WifiIpcHandler::IsConnected()
 
 void WifiIpcHandler::SettingSocket()
 {
-  int32_t ret = fcntl(mConnFd, F_SETFL, O_NONBLOCK);
+  int32_t ret = fcntl(mRwFd, F_SETFL, O_NONBLOCK);
   if (ret < 0) {
     WIFID_ERROR("Error setting O_NONBLOCK errno: %s\n", strerror(errno));
   }

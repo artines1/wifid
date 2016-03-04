@@ -82,6 +82,8 @@ MessageHandler::Dispatch(uint8_t* aData, size_t aDataLen)
   // Insert session id into session map according to the message type.
   mSessionMap[msgType].push(sessionId);
 
+  WIFID_DEBUG("MessageHandler::Dispatch %d %d %d len %d", msgCategory, msgType, sessionId, aDataLen);
+
   switch (msgType) {
     case WIFI_MESSAGE_TYPE_VERSION:
       HandleMessageVersion();
@@ -211,8 +213,8 @@ MessageHandler::HandleMessageVersion()
 
   respMsg->SetStatus(WIFI_STATUS_OK);
   respMsg->SetSessionId(sessionId);
-  (*respMsg)->majorVersion = MAJOR_VER;
-  (*respMsg)->minorVersion = MINOR_VER;
+  (*respMsg)->majorVersion = htons(MAJOR_VER);
+  (*respMsg)->minorVersion = htons(MINOR_VER);
 
   SendMessage(static_cast<WifiBaseMessage*>(respMsg));
 }

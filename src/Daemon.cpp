@@ -87,7 +87,7 @@ class DaemonImpl : public Daemon {
 }  // namespace
 
 bool Daemon::Initialize(const CommandLineOptions *aOp) {
-  if (!sDaemon) {
+  if (sDaemon) {
     return false;
   }
 

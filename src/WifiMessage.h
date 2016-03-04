@@ -17,6 +17,7 @@
 #ifndef WifiMessage_h
 #define WifiMessage_h
 
+#include <arpa/inet.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -24,30 +25,30 @@
 #include <map>
 
 #define WIFI_MSG_GET_HEADER(x) (reinterpret_cast<WifiMsgHeader*>(x))
-#define WIFI_MSG_GET_CATEGORY(x) (WIFI_MSG_GET_HEADER(x)->msgCategory)
-#define WIFI_MSG_GET_TYPE(x) (WIFI_MSG_GET_HEADER(x)->msgType)
-#define WIFI_MSG_GET_LEN(x) (WIFI_MSG_GET_HEADER(x)->len)
+#define WIFI_MSG_GET_CATEGORY(x) (ntohs(WIFI_MSG_GET_HEADER(x)->msgCategory))
+#define WIFI_MSG_GET_TYPE(x) (ntohs(WIFI_MSG_GET_HEADER(x)->msgType))
+#define WIFI_MSG_GET_LEN(x) (ntohl(WIFI_MSG_GET_HEADER(x)->len))
 
 #define WIFI_MSG_GET_REQ(x) (reinterpret_cast<WifiMsgReq*>(x))
-#define WIFI_MSG_GET_REQ_SESSION_ID(x) (WIFI_MSG_GET_REQ(x)->sessionId)
+#define WIFI_MSG_GET_REQ_SESSION_ID(x) (ntohs(WIFI_MSG_GET_REQ(x)->sessionId))
 
 namespace wifi {
 
 /**
  * WiFi daemon message format
  *
- * 2 bytes of a message category. (Request/Response/Notification)
- * 2 bytes of a message type. (Depending on category)
- * 4 bytes of the length of this message. (Exclude first 8 bytes)
+ * 2 bytes of a message category. (Request/Response/Notification) (big-endian)
+ * 2 bytes of a message type. (Depending on category) (big-endian)
+ * 4 bytes of the length of this message. (Exclude first 8 bytes) (big-endian)
  * Payload of this message with various lengths depends on message type.
  *
  * Payload of a request message
- *   2 bytes of the session Id.
+ *   2 bytes of the session Id. (big-endian)
  *   Data of the request message.
  *
  * Payload of a response messages
- *   2 bytes of the session Id.
- *   2 bytes of status code.
+ *   2 bytes of the session Id. (big-endian)
+ *   2 bytes of status code. (big-endian)
  *   Data of the response message.
  *
  * Payload of a notification message
@@ -178,9 +179,9 @@ public:
     mData = new uint8_t[length];
     memset(mData, 0 , length * sizeof(uint8_t));
     mMsg = reinterpret_cast<T*>(mData);
-    mMsg->hdr.msgCategory = aMsgCategory;
-    mMsg->hdr.msgType = aMsgType;
-    mMsg->hdr.len = length;
+    mMsg->hdr.msgCategory = htons(aMsgCategory);
+    mMsg->hdr.msgType = htons(aMsgType);
+    mMsg->hdr.len = htonl(length);
     mDataLength = length;
   }
 
@@ -238,9 +239,9 @@ public:
     mData = new uint8_t[length];
     memset(mData, 0 , length * sizeof(uint8_t));
     mMsg = reinterpret_cast<T1*>(mData);
-    mMsg->hdr.msgCategory = aMsgCategory;
-    mMsg->hdr.msgType = aMsgType;
-    mMsg->hdr.len = length;
+    mMsg->hdr.msgCategory = htons(aMsgCategory);
+    mMsg->hdr.msgType = htons(aMsgType);
+    mMsg->hdr.len = htonl(length);
     mMsgBody = reinterpret_cast<T2*>(mData + sizeof(T1));
     mDataLength = length;
   }
@@ -259,9 +260,9 @@ public:
     mData = new uint8_t[length];
     memset(mData, 0 , length * sizeof(uint8_t));
     mMsg = reinterpret_cast<T1*>(mData);
-    mMsg->hdr.msgCategory = aMsgCategory;
-    mMsg->hdr.msgType = aMsgType;
-    mMsg->hdr.len = length;
+    mMsg->hdr.msgCategory = htons(aMsgCategory);
+    mMsg->hdr.msgType = htons(aMsgType);
+    mMsg->hdr.len = htonl(length);
 
     mMsgBody = reinterpret_cast<T2*>(mData + sizeof(T1));
 
@@ -331,7 +332,7 @@ public:
 
   void SetSessionId(uint16_t aSessionId)
   {
-    WifiMessage<WifiMsgReq, T>::mMsg->sessionId = aSessionId;
+    WifiMessage<WifiMsgReq, T>::mMsg->sessionId = htons(aSessionId);
   }
 };
 
@@ -367,7 +368,7 @@ public:
 
   void SetSessionId(uint16_t aSessionId)
   {
-    WifiMessage<WifiMsgResp, T>::mMsg->sessionId = aSessionId;
+    WifiMessage<WifiMsgResp, T>::mMsg->sessionId = htons(aSessionId);
   }
 
   uint16_t GetStatus()
@@ -377,7 +378,7 @@ public:
 
   void SetStatus(WifiStatusCode aStatus)
   {
-    WifiMessage<WifiMsgResp, T>::mMsg->status = aStatus;
+    WifiMessage<WifiMsgResp, T>::mMsg->status = htons(aStatus);
   }
 };
 
