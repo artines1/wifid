@@ -114,13 +114,13 @@ typedef struct {
 
 typedef struct {
   WifiMsgHeader hdr;
-  uint16_t sessionId;
+  uint32_t sessionId;
   uint8_t data[];
 } __attribute__((packed)) WifiMsgReq;
 
 typedef struct {
   WifiMsgHeader hdr;
-  uint16_t sessionId;
+  uint32_t sessionId;
   uint16_t status;
   uint8_t data[];
 } __attribute__((packed)) WifiMsgResp;
