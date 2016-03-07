@@ -21,21 +21,25 @@
 #include "Controller.h"
 #include "MessageHandlerListener.h"
 #include "wifi.h"
+#include "WifiDebug.h"
+#include "WifiMessage.h"
 #include "WpaSupplicantController.h"
 
 #define P2P_SUPPORT_PROPERTY "ro.moz.wifi.p2p_supported"
 #define BUFFER_SIZE        4096
+
+#define TERMINATING_STR   "CTRL-EVENT-TERMINATING"
 
 #define CONTROLLER_LOAD_DRIVER() wifi_load_driver()
 #define CONTROLLER_UNLOAD_DRIVER() wifi_unload_driver()
 #define CONTROLLER_START_WPA_SUPPLICANT(p2p) wifi_start_supplicant(p2p)
 #define CONTROLLER_STOP_WPA_SUPPLICANT(p2p) wifi_stop_supplicant(p2p)
 #define CONTROLLER_CONNECT_TO_WPA_SUPPLICANT(interface) \
-  wifi_connect_to_supplicant(interface)
+  wifi_connect_to_supplicant()
 #define CONTROLLER_CLOSE_WPA_SUPPLICANT_CONNECTION(interface) \
-  wifi_close_supplicant_connection(interface)
+  wifi_close_supplicant_connection()
 #define CONTROLLER_COMMAND(interface, cmd, reply, replyLen) \
-  wifi_command(interface, cmd, reply, replyLen)
+  wifi_command(cmd, reply, replyLen)
 
 using namespace wifi;
 
@@ -111,15 +115,18 @@ int32_t WpaSupplicantController::HandleRequest(uint16_t aType,
       break;
 
     case WIFI_MESSAGE_TYPE_CONNECT_TO_SUPPLICANT:
-      //TODO
+      ret = CONTROLLER_CONNECT_TO_WPA_SUPPLICANT();
+      if (!ret) {
+        StartMonitorEvent();
+      }
       break;
 
     case WIFI_MESSAGE_TYPE_CLOSE_SUPPLICANT_CONNECTION:
-      //TODO
+      CONTROLLER_CLOSE_WPA_SUPPLICANT_CONNECTION();
       break;
 
     case WIFI_MESSAGE_TYPE_COMMAND:
-      //TODO
+      ret = CONTROLLER_COMMAND(NULL, (const char*)(WIFI_MSG_GET_REQ_DATA(aData)), buffer, &len);
       break;
 
     default:
@@ -137,15 +144,18 @@ int32_t WpaSupplicantController::HandleRequest(uint16_t aType,
 void* WpaSupplicantController::WaitForEvent() {
   while(mMonitored) {
     char buf[EVENT_BUF_SIZE];
-    int32_t nread = wifi_wait_for_event(buf, sizeof buf);
+    int32_t nread = wifi_wait_for_event(buf, sizeof(buf));
     if (nread <= 0) {
       continue;
     }
 
-    //dispatch event
+    mListener->OnNotification(WPA_SUPPLICANT_EVENT, buf, nread);
 
-    //TODO we handle stop monitor in gecko.
-    //Do we need handle anything here?
+    //TODO we handle monitoring in gecko.
+    //But still need some hanlders here
+    if(std::strstr(buf, TERMINATING_STR) != NULL){
+      break;
+    }
   }
   return NULL;
 

@@ -98,6 +98,12 @@ MessageHandler::Dispatch(uint8_t* aData, size_t aDataLen)
     case WIFI_MESSAGE_TYPE_COMMAND:
       mWpaController->HandleRequest(msgType, aData, aDataLen);
       break;
+    case WIFI_MESSAGE_TYPE_CONNECT_TO_HOSTAPD:
+    case WIFI_MESSAGE_TYPE_CLOSE_HOSTAPD_CONNECTION:
+    case WIFI_MESSAGE_TYPE_HOSTAPD_GET_STATIONS:
+    case WIFI_MESSAGE_TYPE_HOSTAPD_COMMAND:
+      mHostApdController->HandleRequest(msgType, aData, aDataLen);
+      break;
 
     default:
       break;
@@ -111,7 +117,7 @@ MessageHandler::OnNotification(WifiNotificationType aType,
   void* aData, size_t aLength)
 {
   switch (aType) {
-    case WIFI_NOTIFICATION_EVENT:
+    case WPA_SUPPLICANT_EVENT:
         SendNotification(aData, aLength);
       break;
 
@@ -135,11 +141,14 @@ MessageHandler::OnResponse(
     case WIFI_MESSAGE_TYPE_STOP_SUPPLICANT:
     case WIFI_MESSAGE_TYPE_CONNECT_TO_SUPPLICANT:
     case WIFI_MESSAGE_TYPE_CLOSE_SUPPLICANT_CONNECTION:
+    case WIFI_MESSAGE_TYPE_CONNECT_TO_HOSTAPD:
+    case WIFI_MESSAGE_TYPE_CLOSE_HOSTAPD_CONNECTION:
       SendResponse(aType, aStatus);
       break;
 
+    case WIFI_MESSAGE_TYPE_HOSTAPD_COMMAND:
+    case WIFI_MESSAGE_TYPE_HOSTAPD_GET_STATIONS:
     case WIFI_MESSAGE_TYPE_COMMAND:
-      //TODO add reply and len
       SendResponse(WIFI_MESSAGE_TYPE_COMMAND, aStatus,static_cast<uint8_t*>(aData), aLength);
       break;
 
@@ -161,7 +170,7 @@ void
 MessageHandler::SendNotification(void* aNotification, size_t aLength)
 {
   WifiBaseMessage* notifyMsg = new WifiNotificationMessage<WifiMsgNotifyEvent>
-    (reinterpret_cast<uint8_t*>(aNotification), aLength);
+    (reinterpret_cast<WifiMsgNotifyEvent*>(aNotification), aLength);
 
   SendMessage(notifyMsg);
 }
@@ -169,7 +178,7 @@ MessageHandler::SendNotification(void* aNotification, size_t aLength)
 void
 MessageHandler::SendResponse(WifiMessageType aType, WifiStatusCode aStatus)
 {
-  uint16_t sessionId;
+  uint32_t sessionId;
 
   sessionId = mSessionMap[aType].front();
   mSessionMap[aType].pop();
@@ -188,14 +197,15 @@ MessageHandler::SendResponse(WifiMessageType aType,
                                 uint8_t* aData,
                                 size_t aLength)
 {
-  //TODO send response with data structured in WifiMessage
-  uint16_t sessionId;
+  uint32_t sessionId;
 
   sessionId = mSessionMap[aType].front();
   mSessionMap[aType].pop();
 
-  WifiEmptyMessage<WifiMsgResp>* respMsg = new
-    WifiEmptyMessage<WifiMsgResp>(aData, aLength);
+  WifiResponseMessage<uint8_t>* respMsg = new
+    WifiResponseMessage<uint8_t>(aType, aData, aLength);
+  respMsg->SetStatus(WIFI_STATUS_OK);
+  respMsg->SetSessionId(sessionId);
 
   SendMessage(static_cast<WifiBaseMessage*>(respMsg));
 }
@@ -203,7 +213,7 @@ MessageHandler::SendResponse(WifiMessageType aType,
 void
 MessageHandler::HandleMessageVersion()
 {
-  uint16_t sessionId;
+  uint32_t sessionId;
 
   sessionId = mSessionMap[WIFI_MESSAGE_TYPE_VERSION].front();
   mSessionMap[WIFI_MESSAGE_TYPE_VERSION].pop();

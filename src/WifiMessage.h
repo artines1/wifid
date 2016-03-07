@@ -30,7 +30,8 @@
 #define WIFI_MSG_GET_LEN(x) (ntohl(WIFI_MSG_GET_HEADER(x)->len))
 
 #define WIFI_MSG_GET_REQ(x) (reinterpret_cast<WifiMsgReq*>(x))
-#define WIFI_MSG_GET_REQ_SESSION_ID(x) (ntohs(WIFI_MSG_GET_REQ(x)->sessionId))
+#define WIFI_MSG_GET_REQ_SESSION_ID(x) (ntohl(WIFI_MSG_GET_REQ(x)->sessionId))
+#define WIFI_MSG_GET_REQ_DATA(x) (WIFI_MSG_GET_REQ(x)->data)
 
 namespace wifi {
 
@@ -43,12 +44,12 @@ namespace wifi {
  * Payload of this message with various lengths depends on message type.
  *
  * Payload of a request message
- *   2 bytes of the session Id. (big-endian)
+ *   4 bytes of the session Id. (big-endian)
  *   Data of the request message.
  *
  * Payload of a response messages
- *   2 bytes of the session Id. (big-endian)
- *   2 bytes of status code. (big-endian)
+ *   4 bytes of the session Id. (big-endian)
+ *   4 bytes of status code. (big-endian)
  *   Data of the response message.
  *
  * Payload of a notification message
@@ -79,7 +80,8 @@ typedef enum {
   WIFI_MESSAGE_TYPE_CONNECT_TO_HOSTAPD,
   WIFI_MESSAGE_TYPE_CLOSE_HOSTAPD_CONNECTION,
   WIFI_MESSAGE_TYPE_HOSTAPD_GET_STATIONS,
-  WIFI_MESSAGE_TYPE_HOSTAPD_COMMAND
+  WIFI_MESSAGE_TYPE_HOSTAPD_COMMAND,
+  WIFI_MESSAGE_TYPE_UNKNOWN
 } WifiMessageType;
 
 /**
@@ -94,7 +96,7 @@ typedef enum {
  * Notification Types.
  */
 typedef enum {
-  WIFI_NOTIFICATION_EVENT
+  WPA_SUPPLICANT_EVENT
 } WifiNotificationType;
 
 #ifdef __cplusplus
@@ -121,7 +123,7 @@ typedef struct {
 typedef struct {
   WifiMsgHeader hdr;
   uint32_t sessionId;
-  uint16_t status;
+  uint32_t status;
   uint8_t data[];
 } __attribute__((packed)) WifiMsgResp;
 
@@ -179,8 +181,8 @@ public:
     mData = new uint8_t[length];
     memset(mData, 0 , length * sizeof(uint8_t));
     mMsg = reinterpret_cast<T*>(mData);
-    mMsg->hdr.msgCategory = htons(aMsgCategory);
-    mMsg->hdr.msgType = htons(aMsgType);
+    mMsg->hdr.msgCategory = htons((uint16_t)aMsgCategory);
+    mMsg->hdr.msgType = htons((uint16_t)aMsgType);
     mMsg->hdr.len = htonl(length);
     mDataLength = length;
   }
@@ -239,9 +241,9 @@ public:
     mData = new uint8_t[length];
     memset(mData, 0 , length * sizeof(uint8_t));
     mMsg = reinterpret_cast<T1*>(mData);
-    mMsg->hdr.msgCategory = htons(aMsgCategory);
-    mMsg->hdr.msgType = htons(aMsgType);
-    mMsg->hdr.len = htonl(length);
+    mMsg->hdr.msgCategory = htons((uint16_t)aMsgCategory);
+    mMsg->hdr.msgType = htons((uint16_t)aMsgType);
+    mMsg->hdr.len = htonl((uint32_t)length);
     mMsgBody = reinterpret_cast<T2*>(mData + sizeof(T1));
     mDataLength = length;
   }
@@ -260,13 +262,14 @@ public:
     mData = new uint8_t[length];
     memset(mData, 0 , length * sizeof(uint8_t));
     mMsg = reinterpret_cast<T1*>(mData);
-    mMsg->hdr.msgCategory = htons(aMsgCategory);
-    mMsg->hdr.msgType = htons(aMsgType);
-    mMsg->hdr.len = htonl(length);
+    mMsg->hdr.msgCategory = htons((uint16_t)aMsgCategory);
+    mMsg->hdr.msgType = htons((uint16_t)aMsgType);
+    mMsg->hdr.len = htonl((uint32_t)length);
 
     mMsgBody = reinterpret_cast<T2*>(mData + sizeof(T1));
 
     memcpy(mMsgBody, aMsgBody, aMsgLen * sizeof(uint8_t));
+    mDataLength = length;
   }
 
   virtual ~WifiMessage()
@@ -302,7 +305,7 @@ protected:
 
 template<typename T>
 class WifiRequestMessage
-  : WifiMessage<WifiMsgReq, T>
+  : public WifiMessage<WifiMsgReq, T>
 {
 public:
   WifiRequestMessage(const uint8_t* aData, size_t aDataLen)
@@ -325,14 +328,14 @@ public:
   {
   }
 
-  uint16_t GetSessionId()
+  uint32_t GetSessionId()
   {
     return WifiMessage<WifiMsgReq, T>::mMsg->aSessionId;
   }
 
-  void SetSessionId(uint16_t aSessionId)
+  void SetSessionId(uint32_t aSessionId)
   {
-    WifiMessage<WifiMsgReq, T>::mMsg->sessionId = htons(aSessionId);
+    WifiMessage<WifiMsgReq, T>::mMsg->sessionId = htonl(aSessionId);
   }
 };
 
@@ -361,24 +364,24 @@ public:
   {
   }
 
-  uint16_t GetSessionId()
+  uint32_t GetSessionId()
   {
     return WifiMessage<WifiMsgResp, T>::mMsg->aSessionId;
   }
 
-  void SetSessionId(uint16_t aSessionId)
+  void SetSessionId(uint32_t aSessionId)
   {
-    WifiMessage<WifiMsgResp, T>::mMsg->sessionId = htons(aSessionId);
+    WifiMessage<WifiMsgResp, T>::mMsg->sessionId = htonl(aSessionId);
   }
 
-  uint16_t GetStatus()
+  uint32_t GetStatus()
   {
     return WifiMessage<WifiMsgResp, T>::mMsg->status;
   }
 
   void SetStatus(WifiStatusCode aStatus)
   {
-    WifiMessage<WifiMsgResp, T>::mMsg->status = htons(aStatus);
+    WifiMessage<WifiMsgResp, T>::mMsg->status = htonl((uint32_t)aStatus);
   }
 };
 
@@ -392,14 +395,14 @@ public:
   {
   }
 
-  WifiNotificationMessage(WifiMessageType aMsgType)
-    : WifiMessage<WifiMsgNotify, T>(WIFI_MESSAGE_NOTIFICATION, aMsgType)
+  WifiNotificationMessage()
+    : WifiMessage<WifiMsgNotify, T>(WIFI_MESSAGE_NOTIFICATION, WIFI_MESSAGE_TYPE_UNKNOWN)
   {
   }
 
-  WifiNotificationMessage(WifiMessageType aMsgType, const T* aMsgBody, size_t aMsgLen)
+  WifiNotificationMessage(const T* aMsgBody, size_t aMsgLen)
     : WifiMessage<WifiMsgNotify, T>(WIFI_MESSAGE_NOTIFICATION,
-        aMsgType, aMsgBody, aMsgLen)
+        WIFI_MESSAGE_TYPE_UNKNOWN, aMsgBody, aMsgLen)
   {
   }
 

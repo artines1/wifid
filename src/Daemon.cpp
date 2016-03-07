@@ -51,9 +51,9 @@ class DaemonImpl : public Daemon {
 
  private:
   void CleanUp() {
-    delete mIpcHandler;
     mMsgQueueWorker->ShutDown();
     delete mMsgQueueWorker;
+    delete mIpcHandler;
 
     mInitialized = false;
   }

@@ -243,7 +243,7 @@ int32_t PrintResponse(uint8_t* aData, size_t aDataLen)
 {
   uint16_t msgCategory;
   uint16_t msgType;
-  uint16_t mStatus;
+  uint32_t mStatus;
 
   msgCategory = WIFI_MSG_GET_CATEGORY(aData);
 
@@ -254,11 +254,14 @@ int32_t PrintResponse(uint8_t* aData, size_t aDataLen)
   }
 
   if (msgCategory == WIFI_MESSAGE_NOTIFICATION) {
-    Log("Receive notification %s len %d", aData, aDataLen);
+    Log("Receive notification %s", reinterpret_cast<WifiMsgNotify*>(aData)->data);
   } else {
     msgType = WIFI_MSG_GET_TYPE(aData);
     mStatus = reinterpret_cast<WifiMsgResp*>(aData)->status;
     Log("Receive response %s status %s len %d", GetTypeString(msgType), GetStatusString(mStatus), aDataLen);
+    if (msgType == WIFI_MESSAGE_TYPE_COMMAND || msgType == WIFI_MESSAGE_TYPE_HOSTAPD_COMMAND) {
+      Log("Receive response command %s status %s reply%s", GetTypeString(msgType), GetStatusString(mStatus), reinterpret_cast<WifiMsgResp*>(aData)->data);
+    }
   }
   return 0;
 }
@@ -267,12 +270,77 @@ int32_t PrintResponse(uint8_t* aData, size_t aDataLen)
  ************************************************************************************/
 void LoadDriver(void)
 {
-  // Command follows format in WifiMessage.h
   WifiMsgHeader hdr = { htons(0x00), htons(0x01), htonl(0x02) };
-  uint16_t sessionId = htons(0x11);
+  uint32_t sessionId = htonl(0x11);
   WifiMsgReq req = { hdr, sessionId, {} };
   SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
 }
+
+void UnLoadDriver(void)
+{
+  WifiMsgHeader hdr = { htons(0x00), htons(0x02), htonl(0x02) };
+  uint32_t sessionId = htonl(0x11);
+  WifiMsgReq req = { hdr, sessionId, {} };
+  SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
+}
+
+void StartSupplicant(void)
+{
+  WifiMsgHeader hdr = { htons(0x00), htons(0x03), htonl(0x02) };
+  uint32_t sessionId = htonl(0x11);
+  WifiMsgReq req = { hdr, sessionId, {} };
+  SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
+}
+
+void StopSupplicant(void)
+{
+  WifiMsgHeader hdr = { htons(0x00), htons(0x04), htonl(0x02) };
+  uint32_t sessionId = htonl(0x11);
+  WifiMsgReq req = { hdr, sessionId, {} };
+  SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
+}
+
+void ConnectToSupplicant(void)
+{
+  WifiMsgHeader hdr = { htons(0x00), htons(0x05), htonl(0x02) };
+  uint32_t sessionId = htonl(0x11);
+  WifiMsgReq req = { hdr, sessionId, {} };
+  SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
+}
+
+void CloseSupplicantConnection(void)
+{
+  WifiMsgHeader hdr = { htons(0x00), htons(0x06), htonl(0x02) };
+  uint32_t sessionId = htonl(0x11);
+  WifiMsgReq req = { hdr, sessionId, {} };
+  SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
+}
+
+void ConnectToHostApd(void)
+{
+  WifiMsgHeader hdr = { htons(0x00), htons(0x08), htonl(0x02) };
+  uint32_t sessionId = htonl(0x11);
+  WifiMsgReq req = { hdr, sessionId, {} };
+  SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
+}
+
+void CloseHostApdConnection(void)
+{
+  WifiMsgHeader hdr = { htons(0x00), htons(0x09), htonl(0x02) };
+  uint32_t sessionId = htonl(0x11);
+  WifiMsgReq req = { hdr, sessionId, {} };
+  SendCommand(reinterpret_cast<uint8_t*>(&req), sizeof(req));
+}
+
+void TestCommand(void)
+{
+  uint8_t data[9] = { 0x4c, 0x4f, 0x47, 0x5f, 0x4c, 0x45, 0x56, 0x45, 0x4c };
+  WifiRequestMessage<uint8_t>* req =
+    new WifiRequestMessage<uint8_t>(WIFI_MESSAGE_TYPE_COMMAND, (uint8_t*)data, sizeof(data));
+  req->SetSessionId(0x11);
+  SendCommand(req->GetBuffer(), req->GetLength());
+}
+
 
 int main(int argc, char* argv[]) {
   if (SetUpMockIpcSock() < 0) {
@@ -284,9 +352,33 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  sleep(1);
+  sleep(2);
   LoadDriver();
 
-  sleep(3);
+  sleep(2);
+  StartSupplicant();
+
+  sleep(2);
+  ConnectToSupplicant();
+
+  sleep(2);
+  ConnectToHostApd();
+
+  sleep(2);
+  TestCommand();
+
+  sleep(2);
+  CloseHostApdConnection();
+
+  sleep(2);
+  CloseSupplicantConnection();
+
+  sleep(2);
+  StopSupplicant();
+
+  sleep(2);
+  UnLoadDriver();
+
+  sleep(7);
   return EXIT_SUCCESS;
 }

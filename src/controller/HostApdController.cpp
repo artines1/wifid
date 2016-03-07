@@ -30,7 +30,6 @@
 namespace wifi {
 namespace controller {
 
-static const char HOSTAPD_NAME[] = "hostapd";
 static const char HOSTAPD_CTRL_DIR[] = "/data/misc/wifi/hostapd";
 
 static struct wpa_ctrl *sCtrlConn;
@@ -59,13 +58,14 @@ int32_t HostApdController::ConnectHostApd()
 {
   char ctrlConnPath[256];
   int32_t retryTimes = 20;
+  char* ifname = GetWifiIfname();
 
-  if(*GetWifiIfname() == '\0') {
-    WIFID_DEBUG("wifi_connect_to_hostapd: GetWifiIfname fail");
+  if(!ifname || *ifname == '\0') {
+    WIFID_DEBUG("ConnectHostApd: GetWifiIfname fail");
     return -1;
   }
 
-  snprintf(ctrlConnPath, sizeof(ctrlConnPath), "%s/%s", HOSTAPD_CTRL_DIR, GetWifiIfname());
+  snprintf(ctrlConnPath, sizeof(ctrlConnPath), "%s/%s", HOSTAPD_CTRL_DIR, ifname);
   WIFID_DEBUG("ctrlConnPath = %s\n", ctrlConnPath);
 
   { /* check iface file is ready */
@@ -182,11 +182,13 @@ int32_t HostApdController::HandleRequest(uint16_t aType,
       break;
 
     case WIFI_MESSAGE_TYPE_HOSTAPD_GET_STATIONS:
-      //TODO
+      ret = GetStations();
+      memcpy(buffer, &ret, sizeof(ret));
+      len = sizeof(ret);
       break;
 
     case WIFI_MESSAGE_TYPE_HOSTAPD_COMMAND:
-      //TODO
+      ret = SendCommand((const char*)(WIFI_MSG_GET_REQ_DATA(aData)), buffer, &len);
       break;
     default:
       break;

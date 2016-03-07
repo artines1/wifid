@@ -34,12 +34,6 @@ MessageQueueWorker::MessageQueueWorker(MessageConsumer* aConsumer)
 
 MessageQueueWorker::~MessageQueueWorker()
 {
-  if (!mMessageQueue.empty()) {
-    std::vector<WifiBaseMessage*>::iterator i = mMessageQueue.begin();
-    for (; i != mMessageQueue.end(); i++)
-      delete *i;
-    mMessageQueue.clear();
-  }
 }
 
 static void* StaticThreadFunc(void* aArg)
@@ -57,13 +51,20 @@ void MessageQueueWorker::Initialize()
 
   mDone = true;
 
-  if (pthread_create(&sThread, NULL, StaticThreadFunc, this) != 0) {
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  if (pthread_create(&sThread, &attrs, StaticThreadFunc, this) != 0) {
     abort();
   }
 }
 
 void MessageQueueWorker::ShutDown()
 {
+  if (sThread != -1) {
+    pthread_join(sThread, NULL);
+    sThread = -1;
+  }
   mDone = false;
 }
 
